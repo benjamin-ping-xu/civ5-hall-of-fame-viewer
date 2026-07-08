@@ -2,6 +2,7 @@ const selectDatabaseButton = document.getElementById("selectDatabaseButton");
 const selectedPath = document.getElementById("selectedPath");
 const tableList = document.getElementById("tableList");
 const victoryColumnList = document.getElementById("victoryColumnList");
+const victoryTableContainer = document.getElementById("victoryTableContainer");
 
 selectDatabaseButton.addEventListener("click", async () => {
   const filePath = await window.civ5Api.selectDatabase();
@@ -10,6 +11,7 @@ selectDatabaseButton.addEventListener("click", async () => {
     selectedPath.textContent = "No file selected";
     tableList.innerHTML = "";
     victoryColumnList.innerHTML = "";
+    victoryTableContainer.innerHTML = "";
     return;
   }
 
@@ -34,6 +36,8 @@ selectDatabaseButton.addEventListener("click", async () => {
       li.textContent = `${column.name} (${column.type || "unknown type"})`;
       victoryColumnList.appendChild(li);
     }
+
+    renderVictoryTable(info.victoryColumns, info.victoryRows);
   } catch (error) {
     tableList.innerHTML = "";
 
@@ -42,3 +46,42 @@ selectDatabaseButton.addEventListener("click", async () => {
     tableList.appendChild(li);
   }
 });
+
+function renderVictoryTable(columns, rows) {
+  victoryTableContainer.innerHTML = "";
+
+  if (!rows || rows.length === 0) {
+    victoryTableContainer.textContent = "No victory rows found.";
+    return;
+  }
+
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const tbody = document.createElement("tbody");
+
+  const headerRow = document.createElement("tr");
+
+  for (const column of columns) {
+    const th = document.createElement("th");
+    th.textContent = column.name;
+    headerRow.appendChild(th);
+  }
+
+  thead.appendChild(headerRow);
+
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+
+    for (const column of columns) {
+      const td = document.createElement("td");
+      td.textContent = row[column.name] ?? "";
+      tr.appendChild(td);
+    }
+
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  victoryTableContainer.appendChild(table);
+}
