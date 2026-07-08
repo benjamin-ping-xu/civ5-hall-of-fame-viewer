@@ -1,12 +1,18 @@
 const { app, BrowserWindow } = require('electron/main')
+const path = require("path");
 
-const createWindow = () => {
+function createWindow() {
   const win = new BrowserWindow({
-    width: 800,
-    height: 600
-  })
+    width: 1000,
+    height: 700,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
 
-  win.loadFile('index.html')
+  win.loadFile("index.html");
 }
 
 app.whenReady().then(() => {
