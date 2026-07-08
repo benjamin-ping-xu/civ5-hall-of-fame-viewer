@@ -78,11 +78,26 @@ ipcMain.handle("read-database-info", async (_event, dbPath) => {
 
   try {
     const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
+  .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
+  .all()
+  .map(row => row.name);
+  
+  let victoryColumns = [];
+  
+  if (tables.includes("Victories")) {
+    victoryColumns = db
+      .prepare("PRAGMA table_info(Victories);")
       .all()
-      .map(row => row.name);
-
-    return { tables };
+      .map(column => ({
+        name: column.name,
+        type: column.type
+      }));
+  }
+  
+  return {
+    tables,
+    victoryColumns
+  };
   } finally {
     db.close();
   }
