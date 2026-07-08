@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+out
+release
+release-builds
+package-lock.json
+
+*.db
+*.sqlite
+*.sqlite3

@@ -4,7 +4,11 @@
   "description": "A more detailed app for viewing your past victories (and failures) in Civ 5, with sorting, filtering, and statistics.",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "repository": {
     "type": "git",
@@ -20,9 +24,16 @@
   "homepage": "https://github.com/benjamin-ping-xu/civ5-hall-of-fame-viewer#readme",
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
-    "electron": "^43.1.0"
+    "@eslint/js": "^10.0.1",
+    "electron": "^43.1.0",
+    "eslint": "^10.6.0",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
   }
 }

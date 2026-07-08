@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron/main')
+const { app, BrowserWindow, ipcMain, dialog } = require("electron/main");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -19,20 +19,20 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  createWindow()
+  createWindow();
 
-  app.on('activate', () => {
+  app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
+      createWindow();
     }
-  })
-})
+  });
+});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
   }
-})
+});
 
 ipcMain.handle("select-database", async () => {
   const replayPath = path.join(
@@ -78,26 +78,34 @@ ipcMain.handle("read-database-info", async (_event, dbPath) => {
 
   try {
     const tables = db
-  .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
-  .all()
-  .map(row => row.name);
-  
-  let victoryColumns = [];
-  
-  if (tables.includes("Victories")) {
-    victoryColumns = db
-      .prepare("PRAGMA table_info(Victories);")
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
+      )
       .all()
-      .map(column => ({
-        name: column.name,
-        type: column.type
-      }));
-  }
-  
-  return {
-    tables,
-    victoryColumns
-  };
+      .map((row) => row.name);
+
+    let victoryColumns = [];
+    let victoryRows = [];
+
+    if (tables.includes("Victories")) {
+      victoryColumns = db
+        .prepare("PRAGMA table_info(Victories);")
+        .all()
+        .map((column) => ({
+          name: column.name,
+          type: column.type
+        }));
+
+      victoryRows = db
+        .prepare("SELECT * FROM Victories ORDER BY GameEndTime DESC;")
+        .all();
+    }
+
+    return {
+      tables,
+      victoryColumns,
+      victoryRows
+    };
   } finally {
     db.close();
   }

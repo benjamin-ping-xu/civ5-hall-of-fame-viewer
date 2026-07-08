@@ -30,10 +30,10 @@ selectDatabaseButton.addEventListener("click", async () => {
     victoryColumnList.innerHTML = "";
 
     for (const column of info.victoryColumns) {
-    const li = document.createElement("li");
-    li.textContent = `${column.name} (${column.type || "unknown type"})`;
-    victoryColumnList.appendChild(li);
-}
+      const li = document.createElement("li");
+      li.textContent = `${column.name} (${column.type || "unknown type"})`;
+      victoryColumnList.appendChild(li);
+    }
   } catch (error) {
     tableList.innerHTML = "";
 
