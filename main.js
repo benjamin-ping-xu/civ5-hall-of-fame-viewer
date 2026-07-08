@@ -1,10 +1,10 @@
-const { app, BrowserWindow } = require('electron/main')
+const { app, BrowserWindow, ipcMain, dialog } = require('electron/main')
 const path = require("path");
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1000,
-    height: 700,
+    width: 1100,
+    height: 750,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -30,3 +30,20 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+ipcMain.handle("select-database", async () => {
+  const result = await dialog.showOpenDialog({
+    title: "Upload HallOfFameDatabase.db",
+    properties: ["openFile"],
+    filters: [
+      { name: "SQLite database", extensions: ["db", "sqlite", "sqlite3"] },
+      { name: "All files", extensions: ["*"] }
+    ]
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  return result.filePaths[0];
+});

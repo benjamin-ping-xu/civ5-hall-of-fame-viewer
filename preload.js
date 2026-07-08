@@ -1,1 +1,5 @@
-// for preload scripts, will be filled in later
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("civ5Api", {
+  selectDatabase: () => ipcRenderer.invoke("select-database")
+});
