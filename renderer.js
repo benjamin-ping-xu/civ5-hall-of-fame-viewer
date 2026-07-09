@@ -1,7 +1,5 @@
 const selectDatabaseButton = document.getElementById("selectDatabaseButton");
 const selectedPath = document.getElementById("selectedPath");
-const tableList = document.getElementById("tableList");
-const victoryColumnList = document.getElementById("victoryColumnList");
 const victoryTableContainer = document.getElementById("victoryTableContainer");
 
 selectDatabaseButton.addEventListener("click", async () => {
@@ -9,41 +7,18 @@ selectDatabaseButton.addEventListener("click", async () => {
 
   if (!filePath) {
     selectedPath.textContent = "No file selected";
-    tableList.innerHTML = "";
-    victoryColumnList.innerHTML = "";
     victoryTableContainer.innerHTML = "";
     return;
   }
 
-  selectedPath.textContent = filePath;
-  tableList.innerHTML = "<li>Reading database...</li>";
+  await loadDatabase(filePath);
+});
 
-  try {
-    const info = await window.civ5Api.readDatabaseInfo(filePath);
+window.addEventListener("DOMContentLoaded", async () => {
+  const defaultPath = await window.civ5Api.getDefaultDatabasePath();
 
-    tableList.innerHTML = "";
-
-    for (const table of info.tables) {
-      const li = document.createElement("li");
-      li.textContent = table;
-      tableList.appendChild(li);
-    }
-
-    victoryColumnList.innerHTML = "";
-
-    for (const column of info.victoryColumns) {
-      const li = document.createElement("li");
-      li.textContent = `${column.name} (${column.type || "unknown type"})`;
-      victoryColumnList.appendChild(li);
-    }
-
-    renderVictoryTable(info.victoryColumns, info.victoryRows);
-  } catch (error) {
-    tableList.innerHTML = "";
-
-    const li = document.createElement("li");
-    li.textContent = `Error: ${error.message}`;
-    tableList.appendChild(li);
+  if (defaultPath) {
+    await loadDatabase(defaultPath);
   }
 });
 
@@ -201,7 +176,12 @@ function formatMapName(value) {
 }
 
 function getVisibleColumns(columns) {
-  const hiddenColumns = new Set(["PlayerLeaderName", "PlayerCivilizationName", "WinningTeamPrimaryColor", "WinningTeamSecondaryColor"]);
+  const hiddenColumns = new Set([
+    "PlayerLeaderName",
+    "PlayerCivilizationName",
+    "WinningTeamPrimaryColor",
+    "WinningTeamSecondaryColor"
+  ]);
 
   return columns.filter((column) => !hiddenColumns.has(column.name));
 }
@@ -245,4 +225,16 @@ function getHeaderLabel(columnName) {
   };
 
   return labels[columnName] || columnName;
+}
+
+async function loadDatabase(filePath) {
+  selectedPath.textContent = filePath;
+  victoryTableContainer.textContent = "Reading database...";
+
+  try {
+    const info = await window.civ5Api.readDatabaseInfo(filePath);
+    renderVictoryTable(info.victoryColumns, info.victoryRows);
+  } catch (error) {
+    victoryTableContainer.textContent = `Error: ${error.message}`;
+  }
 }

@@ -6,7 +6,7 @@ const Database = require("better-sqlite3");
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1100,
+    width: 1300,
     height: 750,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -35,20 +35,14 @@ app.on("window-all-closed", () => {
 });
 
 ipcMain.handle("select-database", async () => {
-  const replayPath = path.join(
-    app.getPath("documents"),
-    "My Games",
-    "Sid Meier's Civilization 5",
-    "Replays"
-  );
-
-  const defaultPath = fs.existsSync(replayPath)
-    ? replayPath
-    : app.getPath("documents");
+  const defaultDbPath = getDefaultDatabasePath();
+  const defaultReplayPath = path.dirname(defaultDbPath);
 
   const result = await dialog.showOpenDialog({
     title: "Select Civilization V Hall of Fame database",
-    defaultPath,
+    defaultPath: fs.existsSync(defaultReplayPath)
+      ? defaultReplayPath
+      : app.getPath("documents"),
     properties: ["openFile"],
     filters: [
       { name: "SQLite database", extensions: ["db", "sqlite", "sqlite3"] },
@@ -110,3 +104,23 @@ ipcMain.handle("read-database-info", async (_event, dbPath) => {
     db.close();
   }
 });
+
+ipcMain.handle("get-default-database-path", async () => {
+  const defaultPath = getDefaultDatabasePath();
+
+  if (fs.existsSync(defaultPath)) {
+    return defaultPath;
+  }
+
+  return null;
+});
+
+function getDefaultDatabasePath() {
+  return path.join(
+    app.getPath("documents"),
+    "My Games",
+    "Sid Meier's Civilization 5",
+    "Replays",
+    "HallOfFameDatabase.db"
+  );
+}
