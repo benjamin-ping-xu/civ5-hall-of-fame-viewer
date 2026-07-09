@@ -4,6 +4,10 @@ const victoryTableContainer = document.getElementById("victoryTableContainer");
 const victoryFilter = document.getElementById("victoryFilter");
 const difficultyFilter = document.getElementById("difficultyFilter");
 const speedFilter = document.getElementById("speedFilter");
+const mapSizeFilter = document.getElementById("mapSizeFilter");
+const civilizationFilter = document.getElementById("civilizationFilter");
+const resultFilter = document.getElementById("resultFilter");
+const modeFilter = document.getElementById("modeFilter");
 const clearFiltersButton = document.getElementById("clearFiltersButton");
 
 let currentSortColumn = null;
@@ -34,11 +38,19 @@ window.addEventListener("DOMContentLoaded", async () => {
 victoryFilter.addEventListener("change", renderCurrentTable);
 difficultyFilter.addEventListener("change", renderCurrentTable);
 speedFilter.addEventListener("change", renderCurrentTable);
+mapSizeFilter.addEventListener("change", renderCurrentTable);
+civilizationFilter.addEventListener("change", renderCurrentTable);
+resultFilter.addEventListener("change", renderCurrentTable);
+modeFilter.addEventListener("change", renderCurrentTable);
 
 clearFiltersButton.addEventListener("click", () => {
   victoryFilter.value = "";
   difficultyFilter.value = "";
   speedFilter.value = "";
+  mapSizeFilter.value = "";
+  civilizationFilter.value = "";
+  resultFilter.value = "";
+  modeFilter.value = "";
   renderCurrentTable();
 });
 
@@ -310,6 +322,10 @@ function populateFilters(rows) {
   populateSelect(victoryFilter, rows, "VictoryType");
   populateSelect(difficultyFilter, rows, "PlayerHandicapType");
   populateSelect(speedFilter, rows, "GameSpeedType");
+  populateSelect(mapSizeFilter, rows, "WorldSizeType");
+  populateSelect(civilizationFilter, rows, "PlayerCivilizationType");
+  populateSelect(resultFilter, rows, "PlayerTeamWon");
+  populateSelect(modeFilter, rows, "IsMultiplayer");
 }
 
 function populateSelect(selectElement, rows, columnName) {
@@ -329,7 +345,7 @@ function populateSelect(selectElement, rows, columnName) {
 
   for (const value of values) {
     const option = document.createElement("option");
-    option.value = value;
+    option.value = String(value);
     option.textContent = formatCiv5Value(columnName, value);
     selectElement.appendChild(option);
   }
@@ -351,6 +367,28 @@ function getFilteredRows(rows) {
     }
 
     if (speedFilter.value && row.GameSpeedType !== speedFilter.value) {
+      return false;
+    }
+
+    if (mapSizeFilter.value && row.WorldSizeType !== mapSizeFilter.value) {
+      return false;
+    }
+
+    if (
+      civilizationFilter.value &&
+      row.PlayerCivilizationType !== civilizationFilter.value
+    ) {
+      return false;
+    }
+
+    if (
+      resultFilter.value &&
+      String(row.PlayerTeamWon) !== resultFilter.value
+    ) {
+      return false;
+    }
+
+    if (modeFilter.value && String(row.IsMultiplayer) !== modeFilter.value) {
       return false;
     }
 
