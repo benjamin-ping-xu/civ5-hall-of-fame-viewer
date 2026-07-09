@@ -32,8 +32,36 @@ td {
 
 th {
   background: #e5e7eb;
+  cursor: pointer;
+  user-select: none;
+}
+
+th:hover {
+  background: #d1d5db;
 }
 
 #victoryTableContainer {
   overflow-x: auto;
+}
+
+#filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin: 16px 0;
+  padding: 12px;
+  background: white;
+  border: 1px solid #d1d5db;
+}
+
+#filterBar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+select {
+  padding: 6px 8px;
 }
