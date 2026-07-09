@@ -9,6 +9,7 @@ const civilizationFilter = document.getElementById("civilizationFilter");
 const resultFilter = document.getElementById("resultFilter");
 const modeFilter = document.getElementById("modeFilter");
 const clearFiltersButton = document.getElementById("clearFiltersButton");
+const summaryCards = document.getElementById("summaryCards");
 
 let currentSortColumn = null;
 let currentSortDirection = "asc";
@@ -59,9 +60,15 @@ function renderVictoryTable(columns, rows) {
   const filteredRows = getFilteredRows(rows);
   const sortedRows = [...filteredRows];
 
+  renderSummaryCards(filteredRows, rows);
+
   if (currentSortColumn) {
     sortedRows.sort((a, b) => {
-      const result = compareValues(a[currentSortColumn], b[currentSortColumn]);
+      const result = compareValues(
+        currentSortColumn,
+        a[currentSortColumn],
+        b[currentSortColumn]
+      );
       return currentSortDirection === "asc" ? result : -result;
     });
   }
@@ -300,7 +307,22 @@ async function loadDatabase(filePath) {
   }
 }
 
-function compareValues(a, b) {
+function compareValues(columnName, a, b) {
+  const rankA = getSortRank(columnName, a);
+  const rankB = getSortRank(columnName, b);
+
+  if (rankA !== null && rankB !== null) {
+    return rankA - rankB;
+  }
+
+  if (rankA !== null) {
+    return -1;
+  }
+
+  if (rankB !== null) {
+    return 1;
+  }
+
   const numberA = Number(a);
   const numberB = Number(b);
 
@@ -308,8 +330,8 @@ function compareValues(a, b) {
     return numberA - numberB;
   }
 
-  const textA = formatCiv5Value("", a);
-  const textB = formatCiv5Value("", b);
+  const textA = formatCiv5Value(columnName, a);
+  const textB = formatCiv5Value(columnName, b);
 
   return textA.localeCompare(textB);
 }
@@ -337,11 +359,26 @@ function populateSelect(selectElement, rows, columnName) {
 
   const values = [...new Set(rows.map((row) => row[columnName]))]
     .filter((value) => value !== null && value !== undefined && value !== "")
-    .sort((a, b) =>
-      formatCiv5Value(columnName, a).localeCompare(
+    .sort((a, b) => {
+      const rankA = getSortRank(columnName, a);
+      const rankB = getSortRank(columnName, b);
+
+      if (rankA !== null && rankB !== null) {
+        return rankA - rankB;
+      }
+
+      if (rankA !== null) {
+        return -1;
+      }
+
+      if (rankB !== null) {
+        return 1;
+      }
+
+      return formatCiv5Value(columnName, a).localeCompare(
         formatCiv5Value(columnName, b)
-      )
-    );
+      );
+    });
 
   for (const value of values) {
     const option = document.createElement("option");
@@ -394,4 +431,173 @@ function getFilteredRows(rows) {
 
     return true;
   });
+}
+
+function renderSummaryCards(filteredRows, allRows) {
+  summaryCards.innerHTML = "";
+
+  const totalRecords = allRows.length;
+  const shownRecords = filteredRows.length;
+  const victories = filteredRows.filter(
+    (row) => String(row.PlayerTeamWon) === "1"
+  );
+  const defeats = filteredRows.filter(
+    (row) => String(row.PlayerTeamWon) !== "1"
+  );
+
+  const fastestWin = getFastestWin(victories);
+  const highestScore = getHighestScore(filteredRows);
+  const commonVictory = getMostCommonValue(filteredRows, "VictoryType");
+
+  const cards = [
+    {
+      label: "Records",
+      value: `${shownRecords} of ${totalRecords}`
+    },
+    {
+      label: "Victories",
+      value: victories.length
+    },
+    {
+      label: "Defeats",
+      value: defeats.length
+    },
+    {
+      label: "Fastest Win",
+      value: fastestWin ? `Turn ${fastestWin.WinningTurn}` : "—"
+    },
+    {
+      label: "Highest Score",
+      value: highestScore ? highestScore.Score : "—"
+    },
+    {
+      label: "Most Common Victory",
+      value: commonVictory ? formatCiv5Value("VictoryType", commonVictory) : "—"
+    }
+  ];
+
+  for (const card of cards) {
+    const cardElement = document.createElement("article");
+    cardElement.className = "summary-card";
+
+    const labelElement = document.createElement("div");
+    labelElement.className = "summary-card-label";
+    labelElement.textContent = card.label;
+
+    const valueElement = document.createElement("div");
+    valueElement.className = "summary-card-value";
+    valueElement.textContent = card.value;
+
+    cardElement.appendChild(labelElement);
+    cardElement.appendChild(valueElement);
+    summaryCards.appendChild(cardElement);
+  }
+}
+
+function getFastestWin(rows) {
+  const validRows = rows.filter((row) =>
+    Number.isFinite(Number(row.WinningTurn))
+  );
+
+  if (validRows.length === 0) {
+    return null;
+  }
+
+  return validRows.reduce((best, row) =>
+    Number(row.WinningTurn) < Number(best.WinningTurn) ? row : best
+  );
+}
+
+function getHighestScore(rows) {
+  const validRows = rows.filter((row) => Number.isFinite(Number(row.Score)));
+
+  if (validRows.length === 0) {
+    return null;
+  }
+
+  return validRows.reduce((best, row) =>
+    Number(row.Score) > Number(best.Score) ? row : best
+  );
+}
+
+function getMostCommonValue(rows, columnName) {
+  const counts = new Map();
+
+  for (const row of rows) {
+    const value = row[columnName];
+
+    if (value === null || value === undefined || value === "") {
+      continue;
+    }
+
+    counts.set(value, (counts.get(value) || 0) + 1);
+  }
+
+  let bestValue = null;
+  let bestCount = 0;
+
+  for (const [value, count] of counts.entries()) {
+    if (count > bestCount) {
+      bestValue = value;
+      bestCount = count;
+    }
+  }
+
+  return bestValue;
+}
+
+function getSortRank(columnName, value) {
+  const orders = {
+    PlayerHandicapType: [
+      "HANDICAP_SETTLER",
+      "HANDICAP_CHIEFTAIN",
+      "HANDICAP_WARLORD",
+      "HANDICAP_PRINCE",
+      "HANDICAP_KING",
+      "HANDICAP_EMPEROR",
+      "HANDICAP_IMMORTAL",
+      "HANDICAP_DEITY"
+    ],
+
+    GameSpeedType: [
+      "GAMESPEED_QUICK",
+      "GAMESPEED_STANDARD",
+      "GAMESPEED_EPIC",
+      "GAMESPEED_MARATHON"
+    ],
+
+    WorldSizeType: [
+      "WORLDSIZE_DUEL",
+      "WORLDSIZE_TINY",
+      "WORLDSIZE_SMALL",
+      "WORLDSIZE_STANDARD",
+      "WORLDSIZE_LARGE",
+      "WORLDSIZE_HUGE"
+    ],
+
+    StartEraType: [
+      "ERA_ANCIENT",
+      "ERA_CLASSICAL",
+      "ERA_MEDIEVAL",
+      "ERA_RENAISSANCE",
+      "ERA_INDUSTRIAL",
+      "ERA_MODERN",
+      "ERA_POSTMODERN",
+      "ERA_FUTURE"
+    ],
+
+    IsMultiplayer: [0, 1],
+
+    PlayerTeamWon: [0, 1]
+  };
+
+  const order = orders[columnName];
+
+  if (!order) {
+    return null;
+  }
+
+  const rank = order.map(String).indexOf(String(value));
+
+  return rank === -1 ? null : rank;
 }

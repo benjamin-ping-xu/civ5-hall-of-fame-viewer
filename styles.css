@@ -65,3 +65,28 @@ th:hover {
 select {
   padding: 6px 8px;
 }
+
+#summaryCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.summary-card {
+  background: white;
+  border: 1px solid #d1d5db;
+  padding: 12px;
+}
+
+.summary-card-label {
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 6px;
+}
+
+.summary-card-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
