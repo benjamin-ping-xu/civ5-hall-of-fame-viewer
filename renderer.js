@@ -65,7 +65,7 @@ function renderVictoryTable(columns, rows) {
 
   for (const column of visibleColumns) {
     const th = document.createElement("th");
-    th.textContent = column.name;
+    th.textContent = getHeaderLabel(column.name);
     headerRow.appendChild(th);
   }
 
@@ -201,7 +201,7 @@ function formatMapName(value) {
 }
 
 function getVisibleColumns(columns) {
-  const hiddenColumns = new Set(["PlayerLeaderName", "PlayerCivilizationName"]);
+  const hiddenColumns = new Set(["PlayerLeaderName", "PlayerCivilizationName", "WinningTeamPrimaryColor", "WinningTeamSecondaryColor"]);
 
   return columns.filter((column) => !hiddenColumns.has(column.name));
 }
@@ -223,4 +223,26 @@ function formatFileTime(value) {
     hour: "numeric",
     minute: "2-digit"
   });
+}
+
+function getHeaderLabel(columnName) {
+  const labels = {
+    VictoryType: "Victory",
+    Score: "Score",
+    WinningTurn: "Turns",
+    IsMultiplayer: "Mode",
+    PlayerTeamWon: "Result",
+    PlayerCivilizationType: "Civilization",
+    PlayerHandicapType: "Difficulty",
+    GameEndTime: "Date",
+    WinningTeamLeaderCivilizationType: "Winning Civ",
+    StartEraType: "Era",
+    MapName: "Map",
+    WorldSizeType: "Map Size",
+    GameSpeedType: "Speed",
+    WinningTeamPrimaryColor: "Primary Color",
+    WinningTeamSecondaryColor: "Secondary Color"
+  };
+
+  return labels[columnName] || columnName;
 }
