@@ -10,6 +10,7 @@ const resultFilter = document.getElementById("resultFilter");
 const modeFilter = document.getElementById("modeFilter");
 const clearFiltersButton = document.getElementById("clearFiltersButton");
 const summaryCards = document.getElementById("summaryCards");
+const exportCsvButton = document.getElementById("exportCsvButton");
 
 let currentSortColumn = null;
 let currentSortDirection = "asc";
@@ -43,6 +44,7 @@ mapSizeFilter.addEventListener("change", renderCurrentTable);
 civilizationFilter.addEventListener("change", renderCurrentTable);
 resultFilter.addEventListener("change", renderCurrentTable);
 modeFilter.addEventListener("change", renderCurrentTable);
+exportCsvButton.addEventListener("click", exportCurrentTableToCsv);
 
 clearFiltersButton.addEventListener("click", () => {
   victoryFilter.value = "";
@@ -57,25 +59,13 @@ clearFiltersButton.addEventListener("click", () => {
 
 function renderVictoryTable(columns, rows) {
   const visibleColumns = getVisibleColumns(columns);
-  const filteredRows = getFilteredRows(rows);
-  const sortedRows = [...filteredRows];
+  const displayRows = getCurrentDisplayRows(rows);
 
-  renderSummaryCards(filteredRows, rows);
-
-  if (currentSortColumn) {
-    sortedRows.sort((a, b) => {
-      const result = compareValues(
-        currentSortColumn,
-        a[currentSortColumn],
-        b[currentSortColumn]
-      );
-      return currentSortDirection === "asc" ? result : -result;
-    });
-  }
+  renderSummaryCards(displayRows, rows);
 
   victoryTableContainer.innerHTML = "";
 
-  if (!filteredRows || filteredRows.length === 0) {
+  if (displayRows.length === 0) {
     victoryTableContainer.textContent = "No victory rows found.";
     return;
   }
@@ -102,7 +92,7 @@ function renderVictoryTable(columns, rows) {
         currentSortDirection = "asc";
       }
 
-      renderVictoryTable(currentVictoryColumns, currentVictoryRows);
+      renderCurrentTable();
     });
 
     headerRow.appendChild(th);
@@ -110,7 +100,7 @@ function renderVictoryTable(columns, rows) {
 
   thead.appendChild(headerRow);
 
-  for (const row of sortedRows) {
+  for (const row of displayRows) {
     const tr = document.createElement("tr");
 
     for (const column of visibleColumns) {
@@ -600,4 +590,72 @@ function getSortRank(columnName, value) {
   const rank = order.map(String).indexOf(String(value));
 
   return rank === -1 ? null : rank;
+}
+
+function getCurrentDisplayRows(rows = currentVictoryRows) {
+  const filteredRows = getFilteredRows(rows);
+  const sortedRows = [...filteredRows];
+
+  if (currentSortColumn) {
+    sortedRows.sort((a, b) => {
+      const result = compareValues(
+        currentSortColumn,
+        a[currentSortColumn],
+        b[currentSortColumn]
+      );
+
+      return currentSortDirection === "asc" ? result : -result;
+    });
+  }
+
+  return sortedRows;
+}
+
+async function exportCurrentTableToCsv() {
+  const visibleColumns = getVisibleColumns(currentVictoryColumns);
+  const rows = getCurrentDisplayRows();
+
+  if (rows.length === 0) {
+    window.alert("There are no rows to export.");
+    return;
+  }
+
+  const headerRow = visibleColumns
+    .map((column) => getHeaderLabel(column.name))
+    .map(escapeCsvValue)
+    .join(",");
+
+  const dataRows = rows.map((row) =>
+    visibleColumns
+      .map((column) => formatCiv5Value(column.name, row[column.name]))
+      .map(escapeCsvValue)
+      .join(",")
+  );
+
+  const csvContent = [headerRow, ...dataRows].join("\r\n");
+
+  try {
+    const result = await window.civ5Api.saveCsv(csvContent);
+
+    if (result.saved) {
+      window.alert(`CSV exported to:\n${result.filePath}`);
+    }
+  } catch (error) {
+    window.alert(`Could not export CSV:\n${error.message}`);
+  }
+}
+
+function escapeCsvValue(value) {
+  const stringValue = String(value ?? "");
+
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes('"') ||
+    stringValue.includes("\n") ||
+    stringValue.includes("\r")
+  ) {
+    return `"${stringValue.replaceAll('"', '""')}"`;
+  }
+
+  return stringValue;
 }

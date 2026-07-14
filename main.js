@@ -124,3 +124,35 @@ function getDefaultDatabasePath() {
     "HallOfFameDatabase.db"
   );
 }
+
+ipcMain.handle("save-csv", async (_event, csvContent) => {
+  const result = await dialog.showSaveDialog({
+    title: "Export Civilization V Hall of Fame",
+    defaultPath: path.join(
+      app.getPath("documents"),
+      "civ5_hall_of_fame_export.csv"
+    ),
+    buttonLabel: "Export",
+    filters: [
+      {
+        name: "CSV files",
+        extensions: ["csv"]
+      }
+    ]
+  });
+
+  if (result.canceled || !result.filePath) {
+    return {
+      saved: false,
+      canceled: true
+    };
+  }
+
+  await fs.promises.writeFile(result.filePath, csvContent, "utf8");
+
+  return {
+    saved: true,
+    canceled: false,
+    filePath: result.filePath
+  };
+});
