@@ -1,142 +1,55 @@
-const selectDatabaseButton = document.getElementById("selectDatabaseButton");
-const selectedPath = document.getElementById("selectedPath");
-const victoryTableContainer = document.getElementById("victoryTableContainer");
-const victoryFilter = document.getElementById("victoryFilter");
-const difficultyFilter = document.getElementById("difficultyFilter");
-const speedFilter = document.getElementById("speedFilter");
-const mapSizeFilter = document.getElementById("mapSizeFilter");
-const civilizationFilter = document.getElementById("civilizationFilter");
-const resultFilter = document.getElementById("resultFilter");
-const modeFilter = document.getElementById("modeFilter");
-const clearFiltersButton = document.getElementById("clearFiltersButton");
-const summaryCards = document.getElementById("summaryCards");
-const exportCsvButton = document.getElementById("exportCsvButton");
-
-let currentSortColumn = null;
-let currentSortDirection = "asc";
-let currentVictoryColumns = [];
-let currentVictoryRows = [];
-
-selectDatabaseButton.addEventListener("click", async () => {
-  const filePath = await window.civ5Api.selectDatabase();
-
-  if (!filePath) {
-    selectedPath.textContent = "No file selected";
-    victoryTableContainer.innerHTML = "";
-    return;
+const elements = {
+  selectDatabaseButton: document.getElementById("selectDatabaseButton"),
+  selectedPath: document.getElementById("selectedPath"),
+  victoryTableContainer: document.getElementById("victoryTableContainer"),
+  clearFiltersButton: document.getElementById("clearFiltersButton"),
+  summaryCards: document.getElementById("summaryCards"),
+  exportCsvButton: document.getElementById("exportCsvButton"),
+  filters: {
+    VictoryType: document.getElementById("victoryFilter"),
+    PlayerHandicapType: document.getElementById("difficultyFilter"),
+    GameSpeedType: document.getElementById("speedFilter"),
+    WorldSizeType: document.getElementById("mapSizeFilter"),
+    PlayerCivilizationType: document.getElementById("civilizationFilter"),
+    PlayerTeamWon: document.getElementById("resultFilter"),
+    IsMultiplayer: document.getElementById("modeFilter")
   }
+};
 
-  await loadDatabase(filePath);
-});
+const HIDDEN_COLUMNS = new Set([
+  "PlayerLeaderName",
+  "PlayerCivilizationName",
+  "WinningTeamPrimaryColor",
+  "WinningTeamSecondaryColor"
+]);
 
-window.addEventListener("DOMContentLoaded", async () => {
-  const defaultPath = await window.civ5Api.getDefaultDatabasePath();
+const COLUMN_LABELS = {
+  VictoryType: "Victory",
+  Score: "Score",
+  WinningTurn: "Turns",
+  IsMultiplayer: "Mode",
+  PlayerTeamWon: "Result",
+  PlayerCivilizationType: "Civilization",
+  PlayerHandicapType: "Difficulty",
+  GameEndTime: "Date",
+  WinningTeamLeaderCivilizationType: "Winning Civ",
+  StartEraType: "Era",
+  MapName: "Map",
+  WorldSizeType: "Map Size",
+  GameSpeedType: "Speed",
+  WinningTeamPrimaryColor: "Primary Color",
+  WinningTeamSecondaryColor: "Secondary Color"
+};
 
-  if (defaultPath) {
-    await loadDatabase(defaultPath);
-  }
-});
-
-victoryFilter.addEventListener("change", renderCurrentTable);
-difficultyFilter.addEventListener("change", renderCurrentTable);
-speedFilter.addEventListener("change", renderCurrentTable);
-mapSizeFilter.addEventListener("change", renderCurrentTable);
-civilizationFilter.addEventListener("change", renderCurrentTable);
-resultFilter.addEventListener("change", renderCurrentTable);
-modeFilter.addEventListener("change", renderCurrentTable);
-exportCsvButton.addEventListener("click", exportCurrentTableToCsv);
-
-clearFiltersButton.addEventListener("click", () => {
-  victoryFilter.value = "";
-  difficultyFilter.value = "";
-  speedFilter.value = "";
-  mapSizeFilter.value = "";
-  civilizationFilter.value = "";
-  resultFilter.value = "";
-  modeFilter.value = "";
-  renderCurrentTable();
-});
-
-function renderVictoryTable(columns, rows) {
-  const visibleColumns = getVisibleColumns(columns);
-  const displayRows = getCurrentDisplayRows(rows);
-
-  renderSummaryCards(displayRows, rows);
-
-  victoryTableContainer.innerHTML = "";
-
-  if (displayRows.length === 0) {
-    victoryTableContainer.textContent = "No victory rows found.";
-    return;
-  }
-
-  const table = document.createElement("table");
-  const thead = document.createElement("thead");
-  const tbody = document.createElement("tbody");
-
-  const headerRow = document.createElement("tr");
-
-  for (const column of visibleColumns) {
-    const th = document.createElement("th");
-    th.textContent = getHeaderLabel(column.name);
-
-    if (currentSortColumn === column.name) {
-      th.textContent += currentSortDirection === "asc" ? " ▲" : " ▼";
-    }
-
-    th.addEventListener("click", () => {
-      if (currentSortColumn === column.name) {
-        currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
-      } else {
-        currentSortColumn = column.name;
-        currentSortDirection = "asc";
-      }
-
-      renderCurrentTable();
-    });
-
-    headerRow.appendChild(th);
-  }
-
-  thead.appendChild(headerRow);
-
-  for (const row of displayRows) {
-    const tr = document.createElement("tr");
-
-    for (const column of visibleColumns) {
-      const td = document.createElement("td");
-      td.textContent = formatCiv5Value(column.name, row[column.name]);
-      tr.appendChild(td);
-    }
-
-    tbody.appendChild(tr);
-  }
-
-  table.appendChild(thead);
-  table.appendChild(tbody);
-  victoryTableContainer.appendChild(table);
-}
-
-function formatCiv5Value(columnName, value) {
-  if (value === null || value === undefined || value === "") {
-    return "";
-  }
-
-  if (columnName === "GameEndTime") {
-    return formatFileTime(value);
-  }
-
-  const stringValue = String(value);
-
-  const victoryLabels = {
+const VALUE_LABELS = {
+  VictoryType: {
     VICTORY_SPACE_RACE: "Science Victory!",
     VICTORY_DOMINATION: "Domination Victory!",
     VICTORY_CULTURAL: "Cultural Victory!",
     VICTORY_DIPLOMATIC: "Diplomatic Victory!",
     VICTORY_TIME: "Time Victory!"
-  };
-
-  const difficultyLabels = {
+  },
+  PlayerHandicapType: {
     HANDICAP_SETTLER: "Settler",
     HANDICAP_CHIEFTAIN: "Chieftain",
     HANDICAP_WARLORD: "Warlord",
@@ -145,25 +58,22 @@ function formatCiv5Value(columnName, value) {
     HANDICAP_EMPEROR: "Emperor",
     HANDICAP_IMMORTAL: "Immortal",
     HANDICAP_DEITY: "Deity"
-  };
-
-  const speedLabels = {
+  },
+  GameSpeedType: {
     GAMESPEED_QUICK: "Quick",
     GAMESPEED_STANDARD: "Standard",
     GAMESPEED_EPIC: "Epic",
     GAMESPEED_MARATHON: "Marathon"
-  };
-
-  const worldSizeLabels = {
+  },
+  WorldSizeType: {
     WORLDSIZE_DUEL: "Duel",
     WORLDSIZE_TINY: "Tiny",
     WORLDSIZE_SMALL: "Small",
     WORLDSIZE_STANDARD: "Standard",
     WORLDSIZE_LARGE: "Large",
     WORLDSIZE_HUGE: "Huge"
-  };
-
-  const eraLabels = {
+  },
+  StartEraType: {
     ERA_ANCIENT: "Ancient Era",
     ERA_CLASSICAL: "Classical Era",
     ERA_MEDIEVAL: "Medieval Era",
@@ -172,26 +82,281 @@ function formatCiv5Value(columnName, value) {
     ERA_MODERN: "Modern Era",
     ERA_POSTMODERN: "Atomic Era",
     ERA_FUTURE: "Information Era"
-  };
+  }
+};
 
-  if (columnName === "VictoryType") {
-    return victoryLabels[stringValue] || cleanEnumValue(stringValue);
+const SORT_ORDERS = {
+  PlayerHandicapType: [
+    "HANDICAP_SETTLER",
+    "HANDICAP_CHIEFTAIN",
+    "HANDICAP_WARLORD",
+    "HANDICAP_PRINCE",
+    "HANDICAP_KING",
+    "HANDICAP_EMPEROR",
+    "HANDICAP_IMMORTAL",
+    "HANDICAP_DEITY"
+  ],
+  GameSpeedType: [
+    "GAMESPEED_QUICK",
+    "GAMESPEED_STANDARD",
+    "GAMESPEED_EPIC",
+    "GAMESPEED_MARATHON"
+  ],
+  WorldSizeType: [
+    "WORLDSIZE_DUEL",
+    "WORLDSIZE_TINY",
+    "WORLDSIZE_SMALL",
+    "WORLDSIZE_STANDARD",
+    "WORLDSIZE_LARGE",
+    "WORLDSIZE_HUGE"
+  ],
+  StartEraType: [
+    "ERA_ANCIENT",
+    "ERA_CLASSICAL",
+    "ERA_MEDIEVAL",
+    "ERA_RENAISSANCE",
+    "ERA_INDUSTRIAL",
+    "ERA_MODERN",
+    "ERA_POSTMODERN",
+    "ERA_FUTURE"
+  ],
+  IsMultiplayer: [0, 1],
+  PlayerTeamWon: [0, 1]
+};
+
+const appState = {
+  sortColumn: null,
+  sortDirection: "asc",
+  victoryColumns: [],
+  victoryRows: []
+};
+
+elements.selectDatabaseButton.addEventListener("click", selectDatabase);
+elements.clearFiltersButton.addEventListener("click", clearFilters);
+elements.exportCsvButton.addEventListener("click", exportCurrentTableToCsv);
+
+for (const filter of Object.values(elements.filters)) {
+  filter.addEventListener("change", renderCurrentTable);
+}
+
+window.addEventListener("DOMContentLoaded", loadDefaultDatabase);
+
+async function loadDefaultDatabase() {
+  const defaultPath = await window.civ5Api.getDefaultDatabasePath();
+
+  if (defaultPath) {
+    await loadDatabase(defaultPath);
+  }
+}
+
+async function selectDatabase() {
+  const filePath = await window.civ5Api.selectDatabase();
+
+  if (!filePath) {
+    elements.selectedPath.textContent = "No file selected";
+    clearResults();
+    return;
   }
 
-  if (columnName === "PlayerHandicapType") {
-    return difficultyLabels[stringValue] || cleanEnumValue(stringValue);
+  await loadDatabase(filePath);
+}
+
+async function loadDatabase(filePath) {
+  elements.selectedPath.textContent = filePath;
+  elements.summaryCards.innerHTML = "";
+  elements.victoryTableContainer.textContent = "Reading database...";
+
+  try {
+    const info = await window.civ5Api.readDatabaseInfo(filePath);
+    appState.victoryColumns = info.victoryColumns;
+    appState.victoryRows = info.victoryRows;
+
+    populateFilters(appState.victoryRows);
+    renderCurrentTable();
+  } catch (error) {
+    elements.victoryTableContainer.textContent = `Error: ${error.message}`;
+  }
+}
+
+function clearResults() {
+  elements.summaryCards.innerHTML = "";
+  elements.victoryTableContainer.innerHTML = "";
+}
+
+function clearFilters() {
+  for (const filter of Object.values(elements.filters)) {
+    filter.value = "";
   }
 
-  if (columnName === "GameSpeedType") {
-    return speedLabels[stringValue] || cleanEnumValue(stringValue);
+  renderCurrentTable();
+}
+
+function renderCurrentTable() {
+  renderVictoryTable(appState.victoryColumns, appState.victoryRows);
+}
+
+function renderVictoryTable(columns, rows) {
+  const visibleColumns = getVisibleColumns(columns);
+  const displayRows = getCurrentDisplayRows(rows);
+
+  renderSummaryCards(displayRows, rows);
+  elements.victoryTableContainer.innerHTML = "";
+
+  if (displayRows.length === 0) {
+    elements.victoryTableContainer.textContent = "No victory rows found.";
+    return;
   }
 
-  if (columnName === "WorldSizeType") {
-    return worldSizeLabels[stringValue] || cleanEnumValue(stringValue);
+  const table = document.createElement("table");
+  table.appendChild(createTableHead(visibleColumns));
+  table.appendChild(createTableBody(visibleColumns, displayRows));
+  elements.victoryTableContainer.appendChild(table);
+}
+
+function createTableHead(columns) {
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+
+  for (const column of columns) {
+    const th = document.createElement("th");
+    th.textContent = getSortableHeaderLabel(column.name);
+    th.addEventListener("click", () => {
+      toggleSort(column.name);
+      renderCurrentTable();
+    });
+
+    headerRow.appendChild(th);
   }
 
-  if (columnName === "StartEraType") {
-    return eraLabels[stringValue] || cleanEnumValue(stringValue);
+  thead.appendChild(headerRow);
+  return thead;
+}
+
+function createTableBody(columns, rows) {
+  const tbody = document.createElement("tbody");
+
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+
+    for (const column of columns) {
+      const td = document.createElement("td");
+      td.textContent = formatCiv5Value(column.name, row[column.name]);
+      tr.appendChild(td);
+    }
+
+    tbody.appendChild(tr);
+  }
+
+  return tbody;
+}
+
+function toggleSort(columnName) {
+  if (appState.sortColumn === columnName) {
+    appState.sortDirection = appState.sortDirection === "asc" ? "desc" : "asc";
+    return;
+  }
+
+  appState.sortColumn = columnName;
+  appState.sortDirection = "asc";
+}
+
+function getSortableHeaderLabel(columnName) {
+  const label = getHeaderLabel(columnName);
+
+  if (appState.sortColumn !== columnName) {
+    return label;
+  }
+
+  return `${label} ${appState.sortDirection === "asc" ? "^" : "v"}`;
+}
+
+function populateFilters(rows) {
+  for (const [columnName, filter] of Object.entries(elements.filters)) {
+    populateSelect(filter, rows, columnName);
+  }
+}
+
+function populateSelect(selectElement, rows, columnName) {
+  const currentValue = selectElement.value;
+
+  while (selectElement.options.length > 1) {
+    selectElement.remove(1);
+  }
+
+  for (const value of getUniqueSortedValues(rows, columnName)) {
+    const option = document.createElement("option");
+    option.value = String(value);
+    option.textContent = formatCiv5Value(columnName, value);
+    selectElement.appendChild(option);
+  }
+
+  selectElement.value = currentValue;
+}
+
+function getCurrentDisplayRows(rows = appState.victoryRows) {
+  const sortedRows = [...getFilteredRows(rows)];
+
+  if (!appState.sortColumn) {
+    return sortedRows;
+  }
+
+  sortedRows.sort((a, b) => {
+    const result = compareValues(
+      appState.sortColumn,
+      a[appState.sortColumn],
+      b[appState.sortColumn]
+    );
+
+    return appState.sortDirection === "asc" ? result : -result;
+  });
+
+  return sortedRows;
+}
+
+function getFilteredRows(rows) {
+  return rows.filter((row) =>
+    Object.entries(elements.filters).every(([columnName, filter]) =>
+      matchesFilter(row, columnName, filter.value)
+    )
+  );
+}
+
+function matchesFilter(row, columnName, filterValue) {
+  if (!filterValue) {
+    return true;
+  }
+
+  return String(row[columnName]) === filterValue;
+}
+
+function getUniqueSortedValues(rows, columnName) {
+  return [...new Set(rows.map((row) => row[columnName]))]
+    .filter(hasValue)
+    .sort((a, b) => compareValues(columnName, a, b));
+}
+
+function getVisibleColumns(columns) {
+  return columns.filter((column) => !HIDDEN_COLUMNS.has(column.name));
+}
+
+function getHeaderLabel(columnName) {
+  return COLUMN_LABELS[columnName] || columnName;
+}
+
+function formatCiv5Value(columnName, value) {
+  if (!hasValue(value)) {
+    return "";
+  }
+
+  if (columnName === "GameEndTime") {
+    return formatFileTime(value);
+  }
+
+  const stringValue = String(value);
+  const label = VALUE_LABELS[columnName]?.[stringValue];
+
+  if (label) {
+    return label;
   }
 
   if (
@@ -216,30 +381,6 @@ function formatCiv5Value(columnName, value) {
   return stringValue;
 }
 
-function cleanEnumValue(value) {
-  return String(value)
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function formatMapName(value) {
-  const fileName = String(value).split("\\").pop().split("/").pop();
-
-  return fileName.replace(".lua", "").replaceAll("_", " ");
-}
-
-function getVisibleColumns(columns) {
-  const hiddenColumns = new Set([
-    "PlayerLeaderName",
-    "PlayerCivilizationName",
-    "WinningTeamPrimaryColor",
-    "WinningTeamSecondaryColor"
-  ]);
-
-  return columns.filter((column) => !hiddenColumns.has(column.name));
-}
-
 function formatFileTime(value) {
   const fileTime = Number(value);
 
@@ -259,42 +400,17 @@ function formatFileTime(value) {
   });
 }
 
-function getHeaderLabel(columnName) {
-  const labels = {
-    VictoryType: "Victory",
-    Score: "Score",
-    WinningTurn: "Turns",
-    IsMultiplayer: "Mode",
-    PlayerTeamWon: "Result",
-    PlayerCivilizationType: "Civilization",
-    PlayerHandicapType: "Difficulty",
-    GameEndTime: "Date",
-    WinningTeamLeaderCivilizationType: "Winning Civ",
-    StartEraType: "Era",
-    MapName: "Map",
-    WorldSizeType: "Map Size",
-    GameSpeedType: "Speed",
-    WinningTeamPrimaryColor: "Primary Color",
-    WinningTeamSecondaryColor: "Secondary Color"
-  };
+function formatMapName(value) {
+  const fileName = String(value).split("\\").pop().split("/").pop();
 
-  return labels[columnName] || columnName;
+  return fileName.replace(".lua", "").replaceAll("_", " ");
 }
 
-async function loadDatabase(filePath) {
-  selectedPath.textContent = filePath;
-  victoryTableContainer.textContent = "Reading database...";
-
-  try {
-    const info = await window.civ5Api.readDatabaseInfo(filePath);
-    currentVictoryColumns = info.victoryColumns;
-    currentVictoryRows = info.victoryRows;
-    populateFilters(currentVictoryRows);
-
-    renderVictoryTable(currentVictoryColumns, currentVictoryRows);
-  } catch (error) {
-    victoryTableContainer.textContent = `Error: ${error.message}`;
-  }
+function cleanEnumValue(value) {
+  return String(value)
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function compareValues(columnName, a, b) {
@@ -320,153 +436,27 @@ function compareValues(columnName, a, b) {
     return numberA - numberB;
   }
 
-  const textA = formatCiv5Value(columnName, a);
-  const textB = formatCiv5Value(columnName, b);
-
-  return textA.localeCompare(textB);
+  return formatCiv5Value(columnName, a).localeCompare(
+    formatCiv5Value(columnName, b)
+  );
 }
 
-function renderCurrentTable() {
-  renderVictoryTable(currentVictoryColumns, currentVictoryRows);
-}
+function getSortRank(columnName, value) {
+  const order = SORT_ORDERS[columnName];
 
-function populateFilters(rows) {
-  populateSelect(victoryFilter, rows, "VictoryType");
-  populateSelect(difficultyFilter, rows, "PlayerHandicapType");
-  populateSelect(speedFilter, rows, "GameSpeedType");
-  populateSelect(mapSizeFilter, rows, "WorldSizeType");
-  populateSelect(civilizationFilter, rows, "PlayerCivilizationType");
-  populateSelect(resultFilter, rows, "PlayerTeamWon");
-  populateSelect(modeFilter, rows, "IsMultiplayer");
-}
-
-function populateSelect(selectElement, rows, columnName) {
-  const currentValue = selectElement.value;
-
-  while (selectElement.options.length > 1) {
-    selectElement.remove(1);
+  if (!order) {
+    return null;
   }
 
-  const values = [...new Set(rows.map((row) => row[columnName]))]
-    .filter((value) => value !== null && value !== undefined && value !== "")
-    .sort((a, b) => {
-      const rankA = getSortRank(columnName, a);
-      const rankB = getSortRank(columnName, b);
+  const rank = order.map(String).indexOf(String(value));
 
-      if (rankA !== null && rankB !== null) {
-        return rankA - rankB;
-      }
-
-      if (rankA !== null) {
-        return -1;
-      }
-
-      if (rankB !== null) {
-        return 1;
-      }
-
-      return formatCiv5Value(columnName, a).localeCompare(
-        formatCiv5Value(columnName, b)
-      );
-    });
-
-  for (const value of values) {
-    const option = document.createElement("option");
-    option.value = String(value);
-    option.textContent = formatCiv5Value(columnName, value);
-    selectElement.appendChild(option);
-  }
-
-  selectElement.value = currentValue;
-}
-
-function getFilteredRows(rows) {
-  return rows.filter((row) => {
-    if (victoryFilter.value && row.VictoryType !== victoryFilter.value) {
-      return false;
-    }
-
-    if (
-      difficultyFilter.value &&
-      row.PlayerHandicapType !== difficultyFilter.value
-    ) {
-      return false;
-    }
-
-    if (speedFilter.value && row.GameSpeedType !== speedFilter.value) {
-      return false;
-    }
-
-    if (mapSizeFilter.value && row.WorldSizeType !== mapSizeFilter.value) {
-      return false;
-    }
-
-    if (
-      civilizationFilter.value &&
-      row.PlayerCivilizationType !== civilizationFilter.value
-    ) {
-      return false;
-    }
-
-    if (
-      resultFilter.value &&
-      String(row.PlayerTeamWon) !== resultFilter.value
-    ) {
-      return false;
-    }
-
-    if (modeFilter.value && String(row.IsMultiplayer) !== modeFilter.value) {
-      return false;
-    }
-
-    return true;
-  });
+  return rank === -1 ? null : rank;
 }
 
 function renderSummaryCards(filteredRows, allRows) {
-  summaryCards.innerHTML = "";
+  elements.summaryCards.innerHTML = "";
 
-  const totalRecords = allRows.length;
-  const shownRecords = filteredRows.length;
-  const victories = filteredRows.filter(
-    (row) => String(row.PlayerTeamWon) === "1"
-  );
-  const defeats = filteredRows.filter(
-    (row) => String(row.PlayerTeamWon) !== "1"
-  );
-
-  const fastestWin = getFastestWin(victories);
-  const highestScore = getHighestScore(filteredRows);
-  const commonVictory = getMostCommonValue(filteredRows, "VictoryType");
-
-  const cards = [
-    {
-      label: "Records",
-      value: `${shownRecords} of ${totalRecords}`
-    },
-    {
-      label: "Victories",
-      value: victories.length
-    },
-    {
-      label: "Defeats",
-      value: defeats.length
-    },
-    {
-      label: "Fastest Win",
-      value: fastestWin ? `Turn ${fastestWin.WinningTurn}` : "—"
-    },
-    {
-      label: "Highest Score",
-      value: highestScore ? highestScore.Score : "—"
-    },
-    {
-      label: "Most Common Victory",
-      value: commonVictory ? formatCiv5Value("VictoryType", commonVictory) : "—"
-    }
-  ];
-
-  for (const card of cards) {
+  for (const card of getSummaryCards(filteredRows, allRows)) {
     const cardElement = document.createElement("article");
     cardElement.className = "summary-card";
 
@@ -480,8 +470,47 @@ function renderSummaryCards(filteredRows, allRows) {
 
     cardElement.appendChild(labelElement);
     cardElement.appendChild(valueElement);
-    summaryCards.appendChild(cardElement);
+    elements.summaryCards.appendChild(cardElement);
   }
+}
+
+function getSummaryCards(filteredRows, allRows) {
+  const victories = filteredRows.filter(
+    (row) => String(row.PlayerTeamWon) === "1"
+  );
+  const defeats = filteredRows.filter(
+    (row) => String(row.PlayerTeamWon) !== "1"
+  );
+  const fastestWin = getFastestWin(victories);
+  const highestScore = getHighestScore(filteredRows);
+  const commonVictory = getMostCommonValue(filteredRows, "VictoryType");
+
+  return [
+    {
+      label: "Records",
+      value: `${filteredRows.length} of ${allRows.length}`
+    },
+    {
+      label: "Victories",
+      value: victories.length
+    },
+    {
+      label: "Defeats",
+      value: defeats.length
+    },
+    {
+      label: "Fastest Win",
+      value: fastestWin ? `Turn ${fastestWin.WinningTurn}` : "-"
+    },
+    {
+      label: "Highest Score",
+      value: highestScore ? highestScore.Score : "-"
+    },
+    {
+      label: "Most Common Victory",
+      value: commonVictory ? formatCiv5Value("VictoryType", commonVictory) : "-"
+    }
+  ];
 }
 
 function getFastestWin(rows) {
@@ -516,7 +545,7 @@ function getMostCommonValue(rows, columnName) {
   for (const row of rows) {
     const value = row[columnName];
 
-    if (value === null || value === undefined || value === "") {
+    if (!hasValue(value)) {
       continue;
     }
 
@@ -536,83 +565,8 @@ function getMostCommonValue(rows, columnName) {
   return bestValue;
 }
 
-function getSortRank(columnName, value) {
-  const orders = {
-    PlayerHandicapType: [
-      "HANDICAP_SETTLER",
-      "HANDICAP_CHIEFTAIN",
-      "HANDICAP_WARLORD",
-      "HANDICAP_PRINCE",
-      "HANDICAP_KING",
-      "HANDICAP_EMPEROR",
-      "HANDICAP_IMMORTAL",
-      "HANDICAP_DEITY"
-    ],
-
-    GameSpeedType: [
-      "GAMESPEED_QUICK",
-      "GAMESPEED_STANDARD",
-      "GAMESPEED_EPIC",
-      "GAMESPEED_MARATHON"
-    ],
-
-    WorldSizeType: [
-      "WORLDSIZE_DUEL",
-      "WORLDSIZE_TINY",
-      "WORLDSIZE_SMALL",
-      "WORLDSIZE_STANDARD",
-      "WORLDSIZE_LARGE",
-      "WORLDSIZE_HUGE"
-    ],
-
-    StartEraType: [
-      "ERA_ANCIENT",
-      "ERA_CLASSICAL",
-      "ERA_MEDIEVAL",
-      "ERA_RENAISSANCE",
-      "ERA_INDUSTRIAL",
-      "ERA_MODERN",
-      "ERA_POSTMODERN",
-      "ERA_FUTURE"
-    ],
-
-    IsMultiplayer: [0, 1],
-
-    PlayerTeamWon: [0, 1]
-  };
-
-  const order = orders[columnName];
-
-  if (!order) {
-    return null;
-  }
-
-  const rank = order.map(String).indexOf(String(value));
-
-  return rank === -1 ? null : rank;
-}
-
-function getCurrentDisplayRows(rows = currentVictoryRows) {
-  const filteredRows = getFilteredRows(rows);
-  const sortedRows = [...filteredRows];
-
-  if (currentSortColumn) {
-    sortedRows.sort((a, b) => {
-      const result = compareValues(
-        currentSortColumn,
-        a[currentSortColumn],
-        b[currentSortColumn]
-      );
-
-      return currentSortDirection === "asc" ? result : -result;
-    });
-  }
-
-  return sortedRows;
-}
-
 async function exportCurrentTableToCsv() {
-  const visibleColumns = getVisibleColumns(currentVictoryColumns);
+  const visibleColumns = getVisibleColumns(appState.victoryColumns);
   const rows = getCurrentDisplayRows();
 
   if (rows.length === 0) {
@@ -620,19 +574,16 @@ async function exportCurrentTableToCsv() {
     return;
   }
 
-  const headerRow = visibleColumns
-    .map((column) => getHeaderLabel(column.name))
-    .map(escapeCsvValue)
-    .join(",");
-
-  const dataRows = rows.map((row) =>
-    visibleColumns
-      .map((column) => formatCiv5Value(column.name, row[column.name]))
-      .map(escapeCsvValue)
-      .join(",")
-  );
-
-  const csvContent = [headerRow, ...dataRows].join("\r\n");
+  const csvContent = [
+    visibleColumns.map((column) => getHeaderLabel(column.name)),
+    ...rows.map((row) =>
+      visibleColumns.map((column) =>
+        formatCiv5Value(column.name, row[column.name])
+      )
+    )
+  ]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
 
   try {
     const result = await window.civ5Api.saveCsv(csvContent);
@@ -658,4 +609,8 @@ function escapeCsvValue(value) {
   }
 
   return stringValue;
+}
+
+function hasValue(value) {
+  return value !== null && value !== undefined && value !== "";
 }
