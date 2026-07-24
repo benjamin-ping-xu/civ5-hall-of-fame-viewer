@@ -1,6 +1,7 @@
 {
   "name": "civ5-hall-of-fame-viewer",
-  "version": "1.0.0",
+  "productName": "Civ 5 Hall of Fame Viewer",
+  "version": "0.1.0",
   "description": "A more detailed app for viewing your past victories (and failures) in Civ 5, with sorting, filtering, and statistics.",
   "main": "main.js",
   "scripts": {
@@ -12,16 +13,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/benjamin-ping-xu/civ5-hall-of-fame-viewer.git"
+    "url": "git+https://github.com/thequantumpotato/civ5-hall-of-fame-viewer.git"
   },
   "keywords": [],
   "author": "Ben Xu",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/benjamin-ping-xu/civ5-hall-of-fame-viewer/issues"
+    "url": "https://github.com/thequantumpotato/civ5-hall-of-fame-viewer/issues"
   },
-  "homepage": "https://github.com/benjamin-ping-xu/civ5-hall-of-fame-viewer#readme",
+  "homepage": "https://github.com/thequantumpotato/civ5-hall-of-fame-viewer#readme",
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
     "@eslint/js": "^10.0.1",
