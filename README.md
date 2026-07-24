@@ -6,7 +6,7 @@ The app reads the local `HallOfFameDatabase.db` file created by Civilization V. 
 
 ## Download
 
-Get the latest portable Windows ZIP from the [Releases](https://github.com/benjamin-ping-xu/civ5-hall-of-fame-viewer/releases) page.
+Get the latest portable Windows ZIP from the [Releases](https://github.com/thequantumpotato/civ5-hall-of-fame-viewer/releases) page.
 
 Unzip it, then run the app inside the extracted folder. 
 
